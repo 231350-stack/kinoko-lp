@@ -1,0 +1,1304 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>木のコドモ KINOKODOMO</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DotGothic16&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bitcount+Grid+Double+Ink&display=swap');
+
+:root {
+  --c0: #1e1240;
+  --c1: #353eec;
+  --c2: #fac239;
+  --c3: #ff4e72;
+  --c4: #ffffff;
+  --cbg: #f4f1ff;
+  --shd: rgba(30,18,64,0.28);
+  --sat: env(safe-area-inset-top,    0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left,   0px);
+  --sar: env(safe-area-inset-right,  0px);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box; margin: 0; padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+html {
+  height: 100%;
+  overscroll-behavior: none;
+}
+
+body {
+  width: 100%; height: 100%;
+  background: var(--cbg);
+  font-family: 'DotGothic16', monospace;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* ─── APP SHELL ─── */
+.app {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  /* dvh fallback chain */
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+/* ─── SLIDES ─── */
+.slide {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* default: off-screen right */
+  transform: translateX(100%);
+  transition: transform 0.38s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+  overflow: hidden;
+}
+.slide.past   { transform: translateX(-100%); }
+.slide.active { transform: translateX(0); }   /* activeを後に定義し、past共存時もactiveが勝つ */
+
+/* スクロールが必要なスライドだけ上書き */
+.slide.scrollable {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* ─── SCANLINES ─── */
+.scanlines {
+  position: fixed; inset: 0;
+  pointer-events: none; z-index: 999;
+  background: repeating-linear-gradient(
+    0deg, transparent, transparent 3px,
+    rgba(30,18,64,0.025) 3px, rgba(30,18,64,0.025) 4px
+  );
+}
+
+/* ─── PROGRESS DOTS ─── */
+.progress {
+  position: fixed;
+  bottom: calc(12px + var(--sab));
+  left: 50%; transform: translateX(-50%);
+  display: flex; gap: 7px; z-index: 100;
+  pointer-events: none;
+}
+.dot { width: 7px; height: 7px; background: rgba(30,18,64,0.2); border-radius: 50%; transition: background .3s; }
+.dot.on { background: var(--c3); }
+
+/* ══════════════════════════════════════ TITLE */
+#s-title {
+  background: linear-gradient(155deg, #1e1240 0%, #353eec 55%, #6a4fff 100%);
+  justify-content: center;
+  gap: clamp(16px, 4vh, 28px);
+  padding:
+    calc(20px + var(--sat))
+    calc(20px + var(--sal))
+    calc(52px + var(--sab))
+    calc(20px + var(--sar));
+}
+
+.forest { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.forest span {
+  position: absolute;
+  font-size: clamp(20px, 5vw, 32px);
+  opacity: .18;
+  animation: sway var(--sp, 3s) ease-in-out infinite alternate;
+  transform-origin: bottom center;
+}
+
+.logo { position: relative; z-index: 1; text-align: center; }
+.logo-big {
+  display: block;
+  font-size: clamp(30px, 8.5vw, 52px);
+  color: var(--c2); letter-spacing: 4px;
+  text-shadow: 3px 3px 0 rgba(30,18,64,0.4);
+}
+.logo-kana {
+  display: block;
+  font-size: clamp(12px, 3.5vw, 16px);
+  color: rgba(255,255,255,0.75); letter-spacing: 6px; margin-top: 6px;
+}
+
+.title-copy {
+  position: relative; z-index: 1;
+  font-size: clamp(12px, 3.8vw, 17px);
+  color: rgba(255,255,255,0.9); text-align: center;
+  line-height: 2.4; letter-spacing: 1px;
+}
+
+.title-start {
+  position: relative; z-index: 1;
+  background: var(--c2); color: var(--c0);
+  border: 3px solid var(--c0);
+  font-family: 'DotGothic16', monospace;
+  font-size: clamp(15px, 4.5vw, 20px);
+  padding: 16px 52px; cursor: pointer;
+  letter-spacing: 3px; min-height: 54px;
+  box-shadow: 4px 4px 0 rgba(30,18,64,0.4);
+  animation: blink-btn 1.3s step-end infinite;
+  transition: transform .1s;
+}
+.title-start:active { transform: scale(.95); box-shadow: none; }
+
+.title-hint {
+  position: absolute;
+  bottom: calc(44px + var(--sab));
+  z-index: 1; color: rgba(255,255,255,0.45);
+  font-size: 11px; letter-spacing: 2px;
+  animation: blink .5s step-end infinite;
+}
+
+/* ══════════════════════════════════════ SELECT */
+#s-select {
+  background: var(--cbg);
+  justify-content: flex-start;
+  padding:
+    calc(14px + var(--sat))
+    calc(16px + var(--sal))
+    calc(52px + var(--sab))
+    calc(16px + var(--sar));
+  gap: 12px;
+}
+
+.sh {
+  flex-shrink: 0;
+  font-size: clamp(13px, 4vw, 19px);
+  color: var(--c0); letter-spacing: 4px; text-align: center;
+  padding-bottom: 10px; border-bottom: 3px solid var(--c1);
+  width: 100%; max-width: 500px;
+}
+
+.cgrid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 10px; width: 100%; max-width: 500px;
+}
+
+.ccard {
+  background: var(--c4); border: 3px solid var(--c0);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 12px 6px; cursor: pointer; gap: 7px;
+  min-height: 94px; transition: all .1s;
+  box-shadow: 3px 3px 0 var(--c0);
+}
+.ccard:active { background: var(--c2); transform: translate(3px,3px); box-shadow: none; }
+.ccard canvas { image-rendering: pixelated; }
+.ccard-name {
+  font-size: clamp(9px, 2.5vw, 11px);
+  color: var(--c0); text-align: center; line-height: 1.4;
+}
+
+/* ══════════════════════════════════════ INTRO */
+#s-intro {
+  background: #eef0ff;
+  justify-content: flex-start;
+  align-items: center;
+  padding:
+    calc(12px + var(--sat))
+    calc(20px + var(--sal))
+    calc(52px + var(--sab))
+    calc(20px + var(--sar));
+  gap: 0;
+}
+#s-intro .intro-inner {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.intro-inner {
+  display: flex; flex-direction: column;
+  align-items: center; gap: clamp(14px, 3vh, 20px);
+  max-width: 400px; width: 100%;
+}
+
+.intro-name {
+  font-size: clamp(14px, 4.5vw, 22px);
+  color: var(--c1); letter-spacing: 4px; text-align: center;
+}
+
+.intro-cv-wrap {
+  width: clamp(110px, 30vw, 148px);
+  height: clamp(110px, 30vw, 148px);
+}
+.intro-cv-wrap canvas {
+  width: 100%; height: 100%;
+  image-rendering: pixelated;
+}
+
+/* ── 共通バブル ── */
+.bubble {
+  background: var(--c4); border: 3px solid var(--c0);
+  padding: 14px 18px; position: relative;
+  font-size: clamp(12px, 3.5vw, 15px);
+  color: var(--c0); line-height: 2;
+  text-align: left; width: 100%;
+  white-space: pre-wrap;
+  box-shadow: 3px 3px 0 var(--c0);
+}
+.bubble::before {
+  content: ''; position: absolute;
+  top: -17px; left: 50%; transform: translateX(-50%);
+  border: 9px solid transparent; border-bottom-color: var(--c0);
+}
+.bubble::after {
+  content: ''; position: absolute;
+  top: -10px; left: 50%; transform: translateX(-50%);
+  border: 7px solid transparent; border-bottom-color: var(--c4);
+}
+
+.btn-main {
+  background: var(--c1); color: #fff;
+  border: 3px solid var(--c0);
+  font-family: 'DotGothic16', monospace;
+  font-size: clamp(13px, 4vw, 17px);
+  padding: 14px 40px; cursor: pointer;
+  letter-spacing: 3px; box-shadow: 4px 4px 0 var(--c0);
+  transition: all .1s; min-height: 50px;
+}
+.btn-main:active { transform: translate(4px,4px); box-shadow: none; }
+
+/* ══════════════════════════════════════ GAME */
+#s-game {
+  background: #fff8f0;
+  justify-content: flex-start;
+  /* スクロールさせずコンテンツをflex配置で収める */
+}
+
+.game-inner {
+  display: flex; flex-direction: column;
+  align-items: center; width: 100%; max-width: 480px;
+  height: 100%;
+  padding:
+    calc(10px + var(--sat))
+    calc(16px + var(--sal))
+    calc(44px + var(--sab))
+    calc(16px + var(--sar));
+  gap: clamp(6px, 1.5vh, 12px);
+}
+
+.topbar {
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; padding-bottom: 8px; border-bottom: 2px solid var(--c0);
+}
+.g-name { font-size: clamp(11px, 3.5vw, 14px); color: var(--c0); letter-spacing: 2px; font-weight: bold; }
+.hearts { display: flex; gap: 3px; }
+.heart {
+  width: 11px; height: 11px; background: rgba(30,18,64,0.15);
+  clip-path: polygon(50% 90%,0% 35%,15% 0%,50% 20%,85% 0%,100% 35%);
+  transition: background .3s;
+}
+.heart.on { background: var(--c3); }
+.round-ind { font-size: 10px; color: var(--c1); letter-spacing: 1px; font-weight: bold; }
+
+.g-char {
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+  width: clamp(90px, 23vw, 120px);
+  height: clamp(90px, 23vw, 120px);
+}
+#game-cv { image-rendering: pixelated; width: 100%; height: 100%; }
+
+.ptcl {
+  position: absolute; font-size: 20px;
+  pointer-events: none;
+  animation: float-up .9s ease forwards;
+}
+
+.game-bubble {
+  flex-shrink: 0;
+  background: var(--c4); border: 3px solid var(--c0);
+  padding: 12px 16px; position: relative;
+  font-size: clamp(11px, 3.2vw, 14px);
+  color: var(--c0); line-height: 1.9;
+  text-align: left;
+  width: 100%; white-space: pre-wrap;
+  box-shadow: 3px 3px 0 var(--c0);
+}
+.game-bubble::before {
+  content: ''; position: absolute;
+  top: -17px; left: 50%; transform: translateX(-50%);
+  border: 9px solid transparent; border-bottom-color: var(--c0);
+}
+.game-bubble::after {
+  content: ''; position: absolute;
+  top: -10px; left: 50%; transform: translateX(-50%);
+  border: 7px solid transparent; border-bottom-color: var(--c4);
+}
+.mcursor {
+  display: inline-block; width: 8px; height: 11px;
+  background: var(--c0); animation: blink .6s step-end infinite;
+  margin-left: 2px; vertical-align: bottom;
+}
+
+.choices {
+  flex: 1;
+  display: flex; flex-direction: column;
+  gap: clamp(6px, 1.5vh, 10px);
+  width: 100%; justify-content: flex-end;
+}
+.choice {
+  background: var(--c4); color: var(--c0);
+  border: 3px solid var(--c0);
+  font-family: 'DotGothic16', monospace;
+  font-size: clamp(12px, 3.5vw, 15px);
+  padding: 12px 14px; cursor: pointer;
+  text-align: left; letter-spacing: 1px;
+  box-shadow: 3px 3px 0 var(--c0);
+  display: flex; align-items: center; gap: 10px;
+  min-height: 46px; transition: all .1s;
+}
+.choice::before { content: '▶'; color: var(--c3); font-size: 10px; flex-shrink: 0; }
+.choice:active { background: var(--c2); transform: translate(3px,3px); box-shadow: none; }
+
+.next-wrap { flex-shrink: 0; width: 100%; display: none; }
+.btn-next {
+  background: var(--c3); color: #fff;
+  border: 3px solid var(--c0);
+  font-family: 'DotGothic16', monospace;
+  font-size: clamp(13px, 4vw, 17px);
+  padding: 14px; cursor: pointer;
+  letter-spacing: 3px; text-align: center;
+  box-shadow: 4px 4px 0 var(--c0);
+  width: 100%; min-height: 50px; transition: all .1s;
+  animation: blink-btn 1.5s step-end infinite;
+}
+.btn-next:active { transform: translate(4px,4px); box-shadow: none; }
+
+/* ══════════════════════════════════════ ENDING */
+#s-end {
+  background: linear-gradient(160deg, #353eec 0%, #1e1240 100%);
+  justify-content: flex-start;
+  align-items: center;
+  padding:
+    calc(12px + var(--sat))
+    calc(16px + var(--sal))
+    calc(40px + var(--sab))
+    calc(16px + var(--sar));
+  gap: 0;
+}
+
+.end-inner {
+  display: flex; flex-direction: column;
+  align-items: center; gap: clamp(8px, 1.6vh, 12px);
+  max-width: 420px; width: 100%;
+}
+.end-ttl {
+  font-size: clamp(11px, 2.8vw, 14px);
+  color: var(--c2); text-align: center; letter-spacing: 2px;
+  animation: glow 1.5s ease-in-out infinite;
+}
+.end-hearts { display: flex; gap: 4px; }
+.end-hearts .heart { width: 13px; height: 13px; }
+.end-cv {
+  width: clamp(52px, 14vw, 64px);
+  height: clamp(52px, 14vw, 64px);
+}
+#end-cv { image-rendering: pixelated; width: 100%; height: 100%; }
+
+.seed-card {
+  background: var(--c4); border: 4px solid var(--c0);
+  outline: 2px solid var(--c0); outline-offset: -8px;
+  padding: clamp(10px, 3.5vw, 16px);
+  text-align: center;
+  width: clamp(200px, 72vw, 300px);
+  aspect-ratio: 1 / 1;
+  animation: card-in .5s ease forwards;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: clamp(3px, 1vw, 6px);
+}
+.sc-ttl { font-family: 'Bitcount Grid Double Ink', monospace; font-size: clamp(14px, 4.2vw, 21px); color: var(--c0); letter-spacing: 3px; }
+.sc-sprite { image-rendering: pixelated; display: block; width: clamp(58px, 19vw, 80px); height: clamp(58px, 19vw, 80px); }
+.sc-name { font-size: clamp(9px, 2.6vw, 12px); color: var(--c0); letter-spacing: 2px; }
+.sc-divider { width: 72%; height: 2px; background: var(--c1); }
+.sc-msg { font-size: clamp(8px, 2.2vw, 10px); color: var(--c1); line-height: 1.85; text-align: left; width: 86%; }
+.sc-footer { font-size: clamp(6px, 1.7vw, 8px); color: var(--c1); letter-spacing: 3px; }
+
+.end-btns { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.btn-dl {
+  background: var(--c2); color: var(--c0);
+  border: 3px solid var(--c0);
+  font-family: 'DotGothic16', monospace;
+  font-size: clamp(12px, 3.2vw, 15px);
+  padding: 11px; cursor: pointer;
+  letter-spacing: 2px; text-align: center;
+  box-shadow: 4px 4px 0 rgba(30,18,64,0.5); transition: all .1s; min-height: 44px;
+  font-weight: bold;
+}
+.btn-dl:active { transform: translate(4px,4px); box-shadow: none; }
+.btn-replay {
+  background: transparent; color: rgba(255,255,255,0.7);
+  border: 2px solid rgba(255,255,255,0.3);
+  font-family: 'DotGothic16', monospace;
+  font-size: clamp(10px, 2.8vw, 12px);
+  padding: 9px; cursor: pointer;
+  letter-spacing: 2px; text-align: center; min-height: 40px;
+}
+
+/* ── 戻るボタン ── */
+.back-btn {
+  flex-shrink: 0;
+  align-self: flex-start;
+  background: transparent; color: var(--c0);
+  border: 2px solid var(--c0);
+  font-family: 'DotGothic16', monospace;
+  font-size: clamp(10px, 2.8vw, 12px);
+  padding: 7px 14px; cursor: pointer;
+  letter-spacing: 1px; min-height: 34px;
+  transition: all .1s;
+}
+.back-btn:active { background: var(--c0); color: var(--c4); }
+
+/* topbar内小型戻るボタン */
+.back-btn-sm {
+  flex-shrink: 0;
+  background: transparent; color: var(--c0);
+  border: 2px solid var(--c0);
+  font-family: 'DotGothic16', monospace;
+  font-size: 11px;
+  padding: 4px 9px; cursor: pointer;
+  min-height: 28px; transition: all .1s;
+}
+.back-btn-sm:active { background: var(--c0); color: var(--c4); }
+
+/* ── 声をかける 入力エリア ── */
+.voice-area {
+  display: flex; gap: 8px; width: 100%; align-items: stretch;
+}
+.voice-text {
+  flex: 1; min-width: 0;
+  background: var(--c4); border: 3px solid var(--c0);
+  font-family: 'DotGothic16', monospace;
+  font-size: clamp(12px, 3.5vw, 15px);
+  padding: 12px 14px; color: var(--c0);
+  outline: none; letter-spacing: 1px;
+  -webkit-appearance: none;
+}
+.voice-text::placeholder { color: rgba(30,18,64,0.35); }
+.voice-send-btn {
+  flex-shrink: 0;
+  background: var(--c1); color: #fff;
+  border: 3px solid var(--c0);
+  font-family: 'DotGothic16', monospace;
+  font-size: clamp(11px, 3vw, 13px);
+  padding: 12px 14px; cursor: pointer;
+  letter-spacing: 1px;
+  box-shadow: 3px 3px 0 var(--c0);
+  transition: all .1s; min-height: 46px;
+}
+.voice-send-btn:active { transform: translate(3px,3px); box-shadow: none; }
+.voice-cancel-btn {
+  width: 100%;
+  background: transparent; color: var(--c0);
+  border: 2px solid rgba(30,18,64,0.3);
+  font-family: 'DotGothic16', monospace;
+  font-size: clamp(10px, 2.5vw, 12px);
+  padding: 8px; cursor: pointer; letter-spacing: 1px;
+  margin-top: 4px;
+}
+
+/* ══════════════════════════════════════ ANIMATIONS */
+@keyframes sway  { from { transform: rotate(-6deg); } to { transform: rotate(6deg); } }
+@keyframes blink { 50% { opacity: 0; } }
+@keyframes blink-btn { 0%,49% { opacity: 1; } 50%,100% { opacity: .5; } }
+@keyframes glow  {
+  0%,100% { text-shadow: 2px 2px 0 rgba(30,18,64,0.4), 0 0 20px rgba(250,194,57,0.7); }
+  50%     { text-shadow: 2px 2px 0 rgba(30,18,64,0.4), 0 0 60px rgba(250,194,57,1); }
+}
+@keyframes float-up {
+  0%   { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-52px) scale(1.5); }
+}
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(18px) scale(.93); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <div class="scanlines"></div>
+
+  <div class="progress" id="prog">
+    <div class="dot on" data-i="0"></div>
+    <div class="dot"    data-i="1"></div>
+    <div class="dot"    data-i="2"></div>
+    <div class="dot"    data-i="3"></div>
+    <div class="dot"    data-i="4"></div>
+  </div>
+
+  <!-- ══ TITLE ══ -->
+  <div class="slide active" id="s-title">
+    <div class="logo">
+      <span class="logo-big">木のコドモ</span>
+      <span class="logo-kana">KINOKODOMO</span>
+    </div>
+    <p class="title-copy">木のコドモたちが<br>きみのことを<br>まってるよ</p>
+    <button class="title-start" id="btn-start">▶ はじめる</button>
+    <p class="title-hint">タップしてはじめる</p>
+  </div>
+
+  <!-- ══ SELECT ══ -->
+  <div class="slide scrollable" id="s-select">
+    <button class="back-btn" id="back-select">← もどる</button>
+    <p class="sh">▶ だれとあそぶ？</p>
+    <div class="cgrid" id="cgrid"></div>
+  </div>
+
+  <!-- ══ INTRO ══ -->
+  <div class="slide" id="s-intro">
+    <button class="back-btn" id="back-intro">← もどる</button>
+    <div class="intro-inner">
+      <p class="intro-name" id="intro-name">???</p>
+      <div class="intro-cv-wrap">
+        <canvas id="intro-cv" width="140" height="140"></canvas>
+      </div>
+      <div class="bubble" id="intro-bubble"><span id="intro-msg"></span></div>
+      <button class="btn-main" id="btn-play">あそぼう ▶</button>
+    </div>
+  </div>
+
+  <!-- ══ GAME ══ -->
+  <div class="slide" id="s-game">
+    <div class="game-inner">
+      <div class="topbar">
+        <button class="back-btn-sm" id="back-game">←</button>
+        <span class="g-name" id="g-name">???</span>
+        <div class="hearts" id="hearts"></div>
+        <span class="round-ind" id="r-ind">1/3</span>
+      </div>
+      <div class="g-char">
+        <canvas id="game-cv" width="120" height="120"></canvas>
+      </div>
+      <div class="game-bubble">
+        <span id="game-msg"></span><span class="mcursor" id="mcursor"></span>
+      </div>
+      <div class="choices" id="choices" style="display:none"></div>
+      <div class="next-wrap" id="next-wrap">
+        <button class="btn-next" id="btn-next">つぎへ ▶</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ ENDING ══ -->
+  <div class="slide scrollable" id="s-end">
+    <div class="end-inner">
+      <p class="end-ttl" id="end-ttl">🌱 タネカードをゲット！ 🌱</p>
+      <div class="end-hearts" id="end-hearts"></div>
+      <div class="end-cv">
+        <canvas id="end-cv" width="140" height="140"></canvas>
+      </div>
+      <div class="seed-card" id="seed-card" style="display:none">
+        <p class="sc-ttl">TANE CARD</p>
+        <canvas class="sc-sprite" id="sc-sprite" width="96" height="96"></canvas>
+        <p class="sc-name" id="sc-name"></p>
+        <div class="sc-divider"></div>
+        <p class="sc-msg" id="sc-msg"></p>
+        <p class="sc-footer">木のコドモ KINOKODOMO</p>
+      </div>
+      <canvas id="card-canvas" class="card-canvas-el"></canvas>
+      <div class="end-btns">
+        <button class="btn-dl"     id="btn-dl">📥 カードをダウンロード</button>
+        <button class="btn-replay" id="btn-replay">▶ もういちどあそぶ</button>
+        <button class="back-btn"   id="back-end">← キャラをえらびなおす</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+/* ══════════════════════════════════════════════════════ DATA */
+const CHARS = [
+  {
+    id:'ai', name:'あいの木', emoji:'🌿', face:'FACE-01.png',
+    intro:'よろしくね！なにかしてくれる？',
+    rounds:[
+      { q:'のどが かわいたよ〜\nなにかしてくれる？',
+        choices:[
+          {label:'水をあげる',   act:'water', best:true,  r:'つめたい！きもちいい〜！\nありがとう！'},
+          {label:'撫でる',       act:'pet',   best:false, r:'なになに？うれしいなあ。\nでもちょっとのどかわいてて…'},
+          {label:'肥料をあげる', act:'food',  best:false, r:'おいしい！でも やっぱり\nお水がほしかった〜'},
+        ]},
+      { q:'きょうは なんか さびしいな〜\nいっしょに いてくれる？',
+        choices:[
+          {label:'声をかける', act:'voice', best:true,  r:'たくさんの あいを ありがとう！\nうれしくて なみだがでそう'},
+          {label:'撫でる',     act:'pet',   best:true,  r:'なでてくれて うれしい〜！\nすきだよ、きみのこと'},
+          {label:'つつく',     act:'poke',  best:false, r:'わあ！どうしたの？\nいっしょに あそんでくれる？'},
+        ]},
+      { q:'なんか げんきがないなあ〜\nなにかほしいな',
+        choices:[
+          {label:'肥料をあげる', act:'food',  best:true,  r:'おいしい！ありがとう！\nげんきがでてきたよ〜！'},
+          {label:'水をあげる',   act:'water', best:false, r:'ありがとう！きもちいい〜\nでも なんかおなかも すいてた'},
+          {label:'声をかける',   act:'voice', best:false, r:'きみのことばって やさしいね\nちょっとだけ げんきでた！'},
+        ]},
+      { q:'ねえ、はなしをきいて〜！\nきょうさびしかったんだ',
+        choices:[
+          {label:'声をかける', act:'voice', best:true,  r:['きいてるよ〜！なんでもはなして！','そっか〜、きみのそばにいるよ！']},
+          {label:'撫でる',     act:'pet',   best:true,  r:['うれしいな〜！きみってやさしいね','なでてくれると あったかいよ〜']},
+          {label:'つつく',     act:'poke',  best:false, r:['わあ！ちゃんときいてほしかったな〜','びっくりした〜！もっとやさしくして〜']},
+        ]},
+      { q:'いっしょにいると\nなんかうれしくなるよ！',
+        choices:[
+          {label:'水をあげる',   act:'water', best:false, r:['ありがとう〜！でもきみがいるだけでいい！','うれしいけど、いっしょにいてくれるだけでいいよ〜']},
+          {label:'肥料をあげる', act:'food',  best:false, r:['おいしい〜！でもきみのそばがいちばん！','ありがとう！でもいちばんうれしいのはきみといること']},
+          {label:'声をかける',   act:'voice', best:true,  r:['きみのこえって、すきだよ〜！','うれし〜！ずっとはなしてて！']},
+        ]},
+    ],
+    hi:'わたしのことが すきになってくれた？\nうれしいな〜！また きてね。',
+    lo:'ちょっとふしぎな きみだけど…\nまた あいに きてね。',
+    voices:[
+      'そのこと、ずっとおぼえてるよ',
+      'きみといると こころが あったかくなるね',
+      'なんでも はなしてね、きいてるから',
+      'うれしいな〜 ありがとうね',
+      'きみのこえ、とっても すきだよ',
+      'ありがとう！ちょっとだけ げんきでた',
+      'そっか〜 そうなんだね〜',
+      'きみって、やさしいね',
+      'ずっと そこにいてね',
+      'たくさん あいを ありがとう！',
+      'ねえねえ、もっとはなしてよ〜！',
+      'きみのこと、だいすき！',
+      'いっしょにいると あったかいな〜',
+      'もっと そばにいてほしいな',
+      'きみの声をきくと げんきがでるよ',
+    ],
+  },
+  {
+    id:'ikari', name:'いかりの木', emoji:'🔥', face:'FACE-02.png',
+    intro:'なんだよ なにか ようか？',
+    rounds:[
+      { q:'のどかわいたぞ。\nなんとかしてくれ',
+        choices:[
+          {label:'水をあげる',   act:'water', best:true,  r:'うお！きゅうにかけるなよな。\nびっくりするだろ…ありがとな'},
+          {label:'肥料をあげる', act:'food',  best:false, r:'…ありがとな。\nでも まずは水がほしかったんだ'},
+          {label:'つつく',       act:'poke',  best:false, r:'どうしたんだ？ケンカか？\nいいぜ！ …で、水は？'},
+        ]},
+      { q:'…べつに さびしくなんかない。\n…ない、からな？',
+        choices:[
+          {label:'声をかける', act:'voice', best:true,  r:'もうすこし ここにいても いいんだぜ\n…べつに、よろこんでないけど'},
+          {label:'撫でる',     act:'pet',   best:false, r:'やめろよ！はずかしいだろ\n…まあ、わるくはないけど'},
+          {label:'水をあげる', act:'water', best:false, r:'…ありがたいけどな\nそういうことじゃないんだよ'},
+        ]},
+      { q:'もっとつよくなりたいな。\nなにかくれるか',
+        choices:[
+          {label:'肥料をあげる', act:'food',  best:true,  r:'…これは うまいな。\nもっとつよくなれそうだ！'},
+          {label:'声をかける',   act:'voice', best:false, r:'…ことばだけじゃ たりないんだよ\nまあ、きらいじゃないけど'},
+          {label:'撫でる',       act:'pet',   best:false, r:'やめろよって いってるだろ\nはずかしいな！でも…悪くない'},
+        ]},
+      { q:'…なんか ぼーっとしてた。\nはなしかけてみてくれ',
+        choices:[
+          {label:'声をかける', act:'voice', best:true,  r:['…ちゃんときいてたぞ。べつに','そ、そうか…わるくないな、はなしかけられるのも']},
+          {label:'つつく',     act:'poke',  best:false, r:['いきなりつつくな！でも…おかげでめがさめた','いたいって！…まあ、ありがとな']},
+          {label:'撫でる',     act:'pet',   best:false, r:['やめろって！でも…まあ、わるくはないな','こら！…でも、きらいじゃないぞ']},
+        ]},
+      { q:'おいおい、なんで\nそんなにやさしいんだよ',
+        choices:[
+          {label:'肥料をあげる', act:'food',  best:true,  r:['…うまいな。ありがとな。…べつに照れてないぞ','こういうのうれしいけど、そういうことじゃなくてだな…']},
+          {label:'撫でる',       act:'pet',   best:false, r:['だから！やめろって！…でも、たまにならいい','こら…まあ、きみなりのやさしさか。わかった']},
+          {label:'声をかける',   act:'voice', best:true,  r:['…なんでそんなこといえるんだよ。こまるだろ','そんなこというやつ、はじめてだ。…ありがとな']},
+        ]},
+    ],
+    hi:'おまえ、なかなかやるな。\n…また来い。待ってるわけじゃないけどな。',
+    lo:'まあ、またくればいいんじゃないか。\n…べつに まってないけど。',
+    voices:[
+      '…ふん。まあ、わるくない',
+      'もうすこし ここにいても いいんだぜ',
+      '…そういうこと いうなよな、こまるだろ',
+      'べつに、うれしくなんかないからな',
+      '…なんで そんなこと いうんだよ',
+      'わかったわかった、うるさいな！でも…ありがとな',
+      '…いや、もうちょっと はなしていいぞ',
+      'おまえって、おもしろいな',
+      '…きらいじゃないぞ、べつに',
+      'ことばだけじゃ たりないんだよ！でも、きもちは わかった',
+      '…ながい目で みてやるよ',
+      'そんなに まじめに きかなくていいんだけど',
+      '…べつに もっとはなしたいとか そういうんじゃないからな',
+      'なんで そんな やさしいんだよ、こまるだろ',
+      '…まあ、きみとはなすのは わるくないな',
+    ],
+  },
+  {
+    id:'yume', name:'ゆめの木', emoji:'🌙', face:'FACE-03.png',
+    intro:'ふあ〜 おはよ〜',
+    rounds:[
+      { q:'ぬあ〜 のどかわいた〜\nあめ、ふらないかな〜',
+        choices:[
+          {label:'水をあげる', act:'water', best:true,  r:'ぬあ〜？あめが ふってきた〜\nきもちいい〜 ありがとう〜'},
+          {label:'撫でる',     act:'pet',   best:false, r:'いいねえ〜\nでも のどかわいてるんだよね〜'},
+          {label:'声をかける', act:'voice', best:false, r:'ねむくなるまで おはなし しようよ〜\nのどはまだかわいてるけど〜'},
+        ]},
+      { q:'ひとりだと〜 なんか〜\nつまんないな〜',
+        choices:[
+          {label:'撫でる',     act:'pet',   best:true,  r:'いいねえ〜 もっとなでて〜\nずっとそこにいてね〜'},
+          {label:'声をかける', act:'voice', best:true,  r:'ねむくなるまで おはなし しようよ〜\nたのしいな〜'},
+          {label:'つつく',     act:'poke',  best:false, r:'んん？いま つついたのは きみ？\nぼーっとしてたよ〜'},
+        ]},
+      { q:'なんか〜 げんきがほしい〜\nねむい〜',
+        choices:[
+          {label:'肥料をあげる', act:'food',  best:true,  r:'おいし〜 うれし〜\nちょっとだけ めがさめた〜'},
+          {label:'水をあげる',   act:'water', best:false, r:'ありがとう〜\nまだねむいけど すこしましかも〜'},
+          {label:'撫でる',       act:'pet',   best:false, r:'ふわふわ〜 きもちいい〜\nでも もっとげんきがほしかった〜'},
+        ]},
+      { q:'ねむいんだけど〜\nなんかおもしろいはなしして〜',
+        choices:[
+          {label:'声をかける', act:'voice', best:true,  r:['おもしろい〜！もっとはなして〜','ふわあ〜！きみのはなしってふしぎだね〜']},
+          {label:'撫でる',     act:'pet',   best:true,  r:['ふわ〜きもちいい〜！なでられながらはなして〜','いいねえ〜もっとなでてなでて〜']},
+          {label:'つつく',     act:'poke',  best:false, r:['んん〜！びっくりした〜！でもちょっとめがさめた〜','いたいよ〜…でもねむけはとんだかも〜']},
+        ]},
+      { q:'なんか〜 きょう\nきもちがふわふわするよ〜',
+        choices:[
+          {label:'水をあげる',   act:'water', best:false, r:['ありがとう〜！ふわふわのまま〜','きもちいい〜でもふわふわはなおらなかった〜']},
+          {label:'肥料をあげる', act:'food',  best:true,  r:['おいし〜！ふわふわしながらおいしい〜！','げんきでた〜！ありがとう〜']},
+          {label:'声をかける',   act:'voice', best:true,  r:['きみのこえって〜ゆめみたい〜','そのことば〜あたたかくてとろけそう〜']},
+        ]},
+    ],
+    hi:'きみといると〜\nなんかねむいんだけど〜\nでもそれがいいんだよね〜',
+    lo:'またあそびにきてね〜\nわたしは ずっとここにいるから〜',
+    voices:[
+      'ふわ〜 そのことばが きもちいい〜',
+      'なんか〜 いいね〜 もっとはなして〜',
+      'そっか〜… ねむくなってきた〜',
+      'きみの こえって〜 おひさまみたい〜',
+      'うん〜 うん〜 そうなんだ〜',
+      'ふわふわ〜 きもちがゆれてるよ〜',
+      'もっと はなしてよ〜 ねむれるから〜',
+      'そのことば〜 ゆめにでてきそう〜',
+      'なんか〜 あったかいね〜',
+      'ずっと そばに いてね〜',
+      'ふわわ〜 あたまがぽわぽわするよ〜',
+      'そのことば〜 みつみたいに あまいね〜',
+      'ねえ〜 きみって なんでそんなに いいの〜',
+      'きもちよくて〜 とけちゃいそう〜',
+      'もうすこし〜 ゆっくりはなしてよ〜',
+    ],
+  },
+  {
+    id:'kibou', name:'きぼうの木', emoji:'☀️', face:'FACE-04.png',
+    intro:'きゃあ！どうもこんにちは！',
+    rounds:[
+      { q:'きゃあ！のどかわいた！\nなにかちょうだい！',
+        choices:[
+          {label:'水をあげる',   act:'water', best:true,  r:'きゃあ！つめたい！きもちい〜！\nもっとちょうだい！'},
+          {label:'声をかける',   act:'voice', best:false, r:'きみのことばって キラキラしてる！\nでもお水もほしかった〜！'},
+          {label:'つつく',       act:'poke',  best:false, r:'ふふふ！くすぐったいよ〜！\nのどはまだかわいてるけど！'},
+        ]},
+      { q:'もっとなかよくなりたい！\nなにかして！',
+        choices:[
+          {label:'撫でる',       act:'pet',   best:true,  r:'もっとなでてー！\nきみのては あったかいね！'},
+          {label:'声をかける',   act:'voice', best:true,  r:'きみのことばって キラキラしてる！\nもっとはなして！'},
+          {label:'水をあげる',   act:'water', best:false, r:'ありがとう！でも\nなかよくなりたかっただけなの！'},
+        ]},
+      { q:'もっとつよく おおきくなりたい！\nなにかほしい！',
+        choices:[
+          {label:'肥料をあげる', act:'food',  best:true,  r:'おいしすぎるー！もっとちょうだい！\nおおきくなれそう！'},
+          {label:'撫でる',       act:'pet',   best:false, r:'もっとなでてー！\nでもおおきくなるにはたべものも！'},
+          {label:'つつく',       act:'poke',  best:false, r:'ふふふ！\nつつかれたらげんきでた！'},
+        ]},
+      { q:'ねえねえ！きょうなにか\nいいことあった！？',
+        choices:[
+          {label:'声をかける',   act:'voice', best:true,  r:['いいじゃん！！すごい！！うれしすぎる！！','わあ！！きみって最高！！もっとおしえて！！']},
+          {label:'撫でる',       act:'pet',   best:false, r:['やさしい〜！でもはなして！はなして！','うれしい！でももっとおしえてくれると うれしかった！']},
+          {label:'肥料をあげる', act:'food',  best:false, r:['おいしい！！でもはなしがきたかった！！','ありがとう！！でも声もきかせてよ！！']},
+        ]},
+      { q:'もっとげんきになりたい！\nおうえんして！',
+        choices:[
+          {label:'声をかける',   act:'voice', best:true,  r:['うわーーっ！！もう最高！！ありがとう！！','きみのおうえん！！パワーもらえた！！']},
+          {label:'撫でる',       act:'pet',   best:true,  r:['いいよいいよ〜！！もっとなでて！！','うれしすぎる〜！！げんきでた！！']},
+          {label:'水をあげる',   act:'water', best:false, r:['ありがとう！！でもことばもほしかった！！','つめたくてきもちいい！でもおうえんもして！！']},
+        ]},
+    ],
+    hi:'きみとあそんでたら\nもっとすきになっちゃった！\nまたきてね！',
+    lo:'つぎはもっとなかよくなろうよ！\nまってるよ！',
+    voices:[
+      'きみのことばって キラキラしてる！',
+      'そう！そう！わかる！すごい！',
+      'もっとはなして！もっと！',
+      'うれしすぎて とべそう！',
+      'きみって さいこうだね！',
+      'そのことば ずっとわすれないよ！',
+      'わたしも そうおもってた！！',
+      'やばい！きみのこと もっとすきになった！',
+      'ありがとう！げんきでた！！',
+      'もっとはなそ！たのしい！',
+      'もっかい いって！もっかい！',
+      'きみのことば、ぜんぶ ほんとのことだよ！！',
+      'うわーーっ！うれしすぎる！！',
+      'きみって なんでそんなに かがやいてるの！？',
+      'わたし、きみのこと ずっとおうえんするよ！！',
+    ],
+  },
+  {
+    id:'shinjitsu', name:'しんじつの木', emoji:'⭐', face:'FACE-01.png',
+    intro:'おはなしを しましょうか',
+    rounds:[
+      { q:'のどがかわきました。\nよろしければ、なにかいただけますか',
+        choices:[
+          {label:'水をあげる',   act:'water', best:true,  r:'ありがとうございます。\nとても きもちいいです'},
+          {label:'肥料をあげる', act:'food',  best:false, r:'これはおいしいですね。\nでも、お水がほしかったです'},
+          {label:'撫でる',       act:'pet',   best:false, r:'なんといえばいいのか…\nフシギなきぶんです'},
+        ]},
+      { q:'すこし、こころがさびしいです。\nおはなしを してもらえませんか',
+        choices:[
+          {label:'声をかける',   act:'voice', best:true,  r:'あなたはすなおなかたなんですね。\nありがとうございます'},
+          {label:'撫でる',       act:'pet',   best:false, r:'フシギなきぶんですが…\nすこし、うれしかったかもしれません'},
+          {label:'つつく',       act:'poke',  best:false, r:'ちょっとおどろきました。\nなにかようでしょうか'},
+        ]},
+      { q:'もっとせいちょうしたいです。\nなにかいただけますか',
+        choices:[
+          {label:'肥料をあげる', act:'food',  best:true,  r:'これはおいしいですね。\nありがとうございます。せいちょうできそうです'},
+          {label:'水をあげる',   act:'water', best:false, r:'ありがとうございます。\nきもちいいです'},
+          {label:'声をかける',   act:'voice', best:false, r:'あなたのことばは\nとてもていねいですね。うれしいです'},
+        ]},
+      { q:'すこし、むずかしいことを\nかんがえていました',
+        choices:[
+          {label:'声をかける',   act:'voice', best:true,  r:['そうですね…あなたのことばで すこしやくにたちました','ありがとうございます。こころがすっきりしました']},
+          {label:'水をあげる',   act:'water', best:false, r:['ありがとうございます。きもちいいですね','でもこころのもやはのこっています。おはなしをきかせてください']},
+          {label:'撫でる',       act:'pet',   best:false, r:['…なんといえばいいのか。ありがとうございます','フシギなきぶんですが、すこしらくになりました']},
+        ]},
+      { q:'あなたのことを\nもっとしりたいです',
+        choices:[
+          {label:'声をかける',   act:'voice', best:true,  r:['そうですか…とてもおもしろいかたですね','ありがとうございます。たくさんおしえてくれて']},
+          {label:'肥料をあげる', act:'food',  best:false, r:['ありがとうございます。おいしいですね','でも、おはなしのほうがすきです']},
+          {label:'つつく',       act:'poke',  best:false, r:['おどろきました…もしかして、はにかんでいますか？','ちょっとびっくりしましたが、あなたらしいですね']},
+        ]},
+    ],
+    hi:'あなたのことを\nよくわかった気がします。\nまた、お会いできますか。',
+    lo:'ありがとうございました。\nつぎもどうぞよろしく。',
+    voices:[
+      'ありがとうございます。うれしいです',
+      'そのことばを、きちんとうけとりました',
+      'とても ていねいなかたなんですね',
+      'おっしゃることは、よくわかります',
+      'なるほど。そういう かんがえかたも あるのですね',
+      'ありがとうございます。こころに しみました',
+      'きみのことばは、まっすぐですね',
+      'そうですか…。すこし、かんがえてみます',
+      'うれしいです。また はなしかけてください',
+      'あなたと はなすと、たのしいです',
+      'おっしゃる いみが よくわかります',
+      'そのことばを、たいせつに しまっておきます',
+      'あなたと はなしていると むねが あたたかくなります',
+      'そうですね。わたしも そうかんじています',
+      'また、おはなしを きかせてください',
+    ],
+  },
+];
+
+const PTCLS = { water:'💧', food:'✨', pet:'💚', poke:'❗', voice:'💬' };
+
+/* ══════════════════════════════════════════════════════ STATE */
+let sel = null, round = 0, hearts = 0, typing = null, gstate = 'choose';
+let gameRounds = [];
+const SLIDES = ['s-title','s-select','s-intro','s-game','s-end'];
+let si = 0;
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/* ══════════════════════════════════════════════════════ PIXEL ART */
+const SPR = [
+  [3,3,3,3,3,0,2,1,1,2,1,3,3,3,3,3],[3,3,3,3,3,0,2,2,2,2,0,3,3,3,3,3],
+  [3,3,3,3,3,3,0,2,2,0,3,3,3,3,3,3],[3,3,3,3,3,0,2,2,2,2,0,3,3,3,3,3],
+  [3,3,3,0,1,2,2,2,2,2,2,1,0,3,3,3],[3,0,2,2,2,2,2,2,2,2,2,2,2,2,0,3],
+  [3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3],[1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+  [0,2,2,2,2,2,2,2,2,2,2,2,2,2,2,0],[3,1,2,2,2,2,2,2,2,2,2,2,2,2,1,3],
+  [3,3,0,1,1,1,1,1,1,1,1,1,1,0,3,3],[3,3,3,3,1,2,2,2,2,2,2,1,3,3,3,3],
+  [3,3,0,1,2,2,2,3,3,2,2,2,1,0,3,3],[3,0,2,2,2,2,2,2,2,2,2,2,2,2,0,3],
+  [3,3,1,2,2,2,2,2,2,2,2,2,2,1,3,3],[3,3,3,1,2,2,2,2,2,2,2,2,2,3,3,3],
+  [3,3,3,0,1,1,1,2,2,1,1,1,0,3,3,3],[3,3,3,0,2,2,2,1,1,2,2,2,0,3,3,3],
+  [3,3,3,1,2,3,3,1,1,3,3,3,1,3,3,3],[3,3,3,1,1,2,2,1,1,2,2,1,1,3,3,3],
+];
+const PAL = {
+  ai:        ['#1a4a2a','#3a8a4a','#8acc6a','#9bbc0f'],
+  ikari:     ['#4a1a0a','#8a3a1a','#cc7a4a','#9bbc0f'],
+  yume:      ['#1a1a4a','#3a3a8a','#7a7acc','#9bbc0f'],
+  kibou:     ['#4a3a0a','#8a6a1a','#ccaa4a','#9bbc0f'],
+  shinjitsu: ['#1a3a4a','#2a6a7a','#5aaabc','#9bbc0f'],
+};
+
+function drawSpr(cv, ch, sz) {
+  sz = sz || cv.width;
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, sz, sz);
+  const p = PAL[ch.id], R = SPR.length, C = SPR[0].length;
+  const pw = sz / C, ph = sz / R;
+  for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) {
+    const i = SPR[r][c]; if (i === 3) continue;
+    ctx.fillStyle = p[i];
+    ctx.fillRect(c * pw, r * ph, pw + .5, ph + .5);
+  }
+}
+
+/* ══════════════════════════════════════════════════════ ANIM LOOP */
+let animId = null, animCv = null, animCh = null, actAnim = null;
+
+function startAnim(cv, ch) { animCv = cv; animCh = ch; if (!animId) animId = requestAnimationFrame(loop); }
+function stopAnim()        { if (animId) { cancelAnimationFrame(animId); animId = null; } animCv = null; animCh = null; actAnim = null; }
+function trigAnim(type)    { const d = {water:600,food:700,pet:900,poke:500,voice:700}; actAnim = {type, t0:performance.now(), dur:d[type]||600}; }
+
+function loop(ts) {
+  animId = requestAnimationFrame(loop);
+  if (!animCv || !animCh) return;
+  const cv = animCv, ch = animCh, ctx = cv.getContext('2d'), s = cv.width;
+  ctx.clearRect(0, 0, s, s);
+  let ox = 0, oy = Math.sin(ts / 800) * 2.5, rot = 0;
+  if (actAnim) {
+    const t = Math.min((ts - actAnim.t0) / actAnim.dur, 1);
+    if (t >= 1) { actAnim = null; }
+    else switch (actAnim.type) {
+      case 'water': ox = Math.sin(t * Math.PI * 8) * 6 * (1 - t); break;
+      case 'food':  oy -= Math.sin(t * Math.PI) * 13; break;
+      case 'pet':   rot = Math.sin(t * Math.PI * 3) * 7 * (1 - t); ox = Math.sin(t * Math.PI * 3) * 4 * (1 - t); break;
+      case 'poke':  { const e = Math.sin(t * Math.PI); ox = -e * 8; rot = -e * 16; oy += e * 4; } break;
+      case 'voice': oy -= Math.abs(Math.sin(t * Math.PI * 5)) * 7 * (1 - t); break;
+    }
+  }
+  ctx.save();
+  ctx.translate(s / 2 + ox, s / 2 + oy);
+  ctx.rotate(rot * Math.PI / 180);
+  ctx.translate(-s / 2, -s / 2);
+  drawSpr(cv, ch, s);
+  ctx.restore();
+}
+
+/* ══════════════════════════════════════════════════════ AUDIO */
+let actx = null;
+function audio() {
+  if (!actx) try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) { return null; }
+  if (actx.state === 'suspended') actx.resume();
+  return actx;
+}
+function tone(f, d, type, vol, delay) {
+  try {
+    const ac = audio(); if (!ac) return;
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.connect(g); g.connect(ac.destination);
+    o.type = type || 'square'; o.frequency.value = f;
+    g.gain.setValueAtTime(vol || .3, ac.currentTime + (delay||0));
+    g.gain.exponentialRampToValueAtTime(.001, ac.currentTime + (delay||0) + d);
+    o.start(ac.currentTime + (delay||0));
+    o.stop(ac.currentTime + (delay||0) + d + .01);
+  } catch(e) {}
+}
+function sndOk()    { tone(880,.07,'square',.25,0); tone(1108,.10,'square',.20,.07); }
+function sndTick()  { tone(900,.013,'triangle',.07,0); }
+function sndAct(t) {
+  const m = {
+    water:  ()=>{ tone(700,.07,'sine',.20,0); tone(500,.07,'sine',.18,.08); tone(350,.10,'sine',.15,.16); },
+    food:   ()=>{ tone(523,.08,'square',.22,0); tone(659,.08,'square',.24,.09); tone(784,.15,'square',.26,.18); },
+    pet:    ()=>{ tone(440,.22,'sine',.16,0); tone(550,.22,'sine',.13,.14); },
+    poke:   ()=>{ tone(250,.05,'sawtooth',.30,0); tone(120,.06,'sawtooth',.25,.05); },
+    voice:  ()=>{ tone(880,.10,'sine',.18,0); tone(1108,.10,'sine',.15,.11); tone(1320,.18,'sine',.12,.22); },
+  };
+  if (m[t]) m[t]();
+}
+function sndFanfare() { [523,659,784,1047,784,1047,1319].forEach((f,i) => tone(f,i===6?.5:.12,'square',.30,i*.13)); }
+
+/* ══════════════════════════════════════════════════════ TYPEWRITER */
+function typeMsg(id, text, cb) {
+  if (typing) clearInterval(typing);
+  const el = document.getElementById(id); el.textContent = ''; let i = 0;
+  typing = setInterval(() => {
+    if (i < text.length) {
+      const c = text[i++]; el.textContent += c;
+      if (c !== ' ' && c !== '\n') sndTick();
+    } else {
+      clearInterval(typing); typing = null; if (cb) cb();
+    }
+  }, 45);
+}
+
+/* ══════════════════════════════════════════════════════ SLIDES */
+function go(idx, back) {
+  if (si === idx) return;
+  const fromEl = document.getElementById(SLIDES[si]);
+  const toEl   = document.getElementById(SLIDES[idx]);
+
+  if (back) {
+    // 戻り: 現スライドを右へ退場、前スライドを左から登場
+    fromEl.classList.remove('active');          // → 100%（デフォルト）へ遷移
+    toEl.classList.add('active');               // past(-100%)またはデフォルト(100%) → 0%
+    // 退場完了後に past をクリア（次回の再進入に備える）
+    fromEl.addEventListener('transitionend', () => {
+      fromEl.classList.remove('past');
+    }, { once: true });
+  } else {
+    // 進行: 現スライドを左へ退場、次スライドを右から登場
+    fromEl.classList.remove('active');
+    fromEl.classList.add('past');
+    toEl.classList.remove('past');              // 100%（右）から始める
+    void toEl.offsetWidth;                      // reflow で transition を発火
+    toEl.classList.add('active');
+  }
+
+  si = idx;
+  document.querySelectorAll('.dot').forEach(d => d.classList.toggle('on', +d.dataset.i === idx));
+}
+
+/* 戻るボタン */
+document.getElementById('back-select').addEventListener('click', () => {
+  sndOk(); go(0, true);
+});
+document.getElementById('back-intro').addEventListener('click', () => {
+  sndOk(); go(1, true);
+});
+document.getElementById('back-game').addEventListener('click', () => {
+  sndOk();
+  stopAnim();
+  sel = null; round = 0; hearts = 0; gstate = 'choose'; gameRounds = [];
+  if (typing) { clearInterval(typing); typing = null; }
+  go(1, true);   // キャラ選択画面へ戻る
+});
+
+/* ══════════════════════════════════════════════════════ TITLE */
+
+document.getElementById('btn-start').addEventListener('click', () => { sndOk(); buildSelect(); go(1); });
+document.getElementById('s-title').addEventListener('click', e => {
+  if (e.target.id !== 'btn-start') { sndOk(); buildSelect(); go(1); }
+});
+
+/* ══════════════════════════════════════════════════════ SELECT */
+function buildSelect() {
+  const g = document.getElementById('cgrid'); g.innerHTML = '';
+  CHARS.forEach(ch => {
+    const card = document.createElement('div'); card.className = 'ccard';
+    const cv = document.createElement('canvas'); cv.width = cv.height = 56;
+    const nm = document.createElement('span'); nm.className = 'ccard-name'; nm.textContent = ch.name;
+    card.appendChild(cv); card.appendChild(nm);
+    card.addEventListener('click', () => pickChar(ch));
+    g.appendChild(card);
+    drawSpr(cv, ch, 56);
+  });
+}
+
+function pickChar(ch) {
+  sndOk(); sel = ch; round = 0; hearts = 0;
+  gameRounds = shuffle(ch.rounds);
+  // イントロ画面の内容をトランジション前に準備
+  document.getElementById('intro-name').textContent = ch.name;
+  document.getElementById('intro-msg').textContent = '';
+  const cv = document.getElementById('intro-cv');
+  stopAnim();
+  drawSpr(cv, ch, 140);     // 先に描いておく
+  go(2);
+  startAnim(cv, ch);
+  setTimeout(() => typeMsg('intro-msg', ch.intro), 400);
+}
+
+document.getElementById('btn-play').addEventListener('click', () => { sndOk(); startRound(); });
+
+/* ══════════════════════════════════════════════════════ GAME */
+function setHearts(el, count, max, size) {
+  el.innerHTML = '';
+  for (let i = 0; i < max; i++) {
+    const h = document.createElement('div');
+    h.className = 'heart' + (i < count ? ' on' : '');
+    if (size) { h.style.width = size + 'px'; h.style.height = size + 'px'; }
+    el.appendChild(h);
+  }
+}
+
+function startRound() {
+  if (!sel) return;
+  const data = gameRounds[round];
+  if (!data) { goEnd(); return; }
+
+  // ── コンテンツをトランジション前に更新 ──
+  document.getElementById('g-name').textContent = sel.name;
+  document.getElementById('r-ind').textContent  = (round + 1) + '/' + gameRounds.length;
+  setHearts(document.getElementById('hearts'), hearts, 6);
+
+  const cv = document.getElementById('game-cv');
+  drawSpr(cv, sel, 120);   // トランジション中も絵が表示される
+
+  document.getElementById('game-msg').textContent = '';
+  document.getElementById('mcursor').style.display = 'inline-block';
+  document.getElementById('choices').style.display = 'none';
+  document.getElementById('next-wrap').style.display = 'none';
+  gstate = 'choose';
+
+  // ── スライド遷移（同一スライドでは何も起きない ★修正済）──
+  go(3);
+
+  // アニメーション再起動
+  stopAnim(); startAnim(cv, sel);
+
+  typeMsg('game-msg', data.q, () => {
+    document.getElementById('mcursor').style.display = 'none';
+    showChoices(data.choices);
+  });
+}
+
+function showChoices(list) {
+  const el = document.getElementById('choices'); el.innerHTML = ''; el.style.display = 'flex';
+  shuffle(list).forEach(c => {
+    const btn = document.createElement('button'); btn.className = 'choice'; btn.textContent = c.label;
+    if (c.act === 'voice') {
+      btn.addEventListener('click', () => {
+        if (gstate !== 'choose') return;
+        const res = sel.voices[Math.floor(Math.random() * sel.voices.length)];
+        pick(c, res);
+      });
+    } else {
+      btn.addEventListener('click', () => { if (gstate === 'choose') pick(c); });
+    }
+    el.appendChild(btn);
+  });
+}
+
+
+function pick(c, responseOverride) {
+  let response;
+  if (responseOverride !== undefined) {
+    response = responseOverride;
+  } else if (Array.isArray(c.r)) {
+    response = c.r[Math.floor(Math.random() * c.r.length)];
+  } else {
+    response = c.r;
+  }
+  gstate = 'react'; sndOk(); sndAct(c.act);
+  hearts = Math.min(hearts + (c.best ? 2 : 1), 6);
+  setHearts(document.getElementById('hearts'), hearts, 6);
+  trigAnim(c.act);
+  spawnPtcl(PTCLS[c.act] || '✨');
+  document.getElementById('choices').style.display = 'none';
+  document.getElementById('mcursor').style.display = 'inline-block';
+  typeMsg('game-msg', response, () => {
+    document.getElementById('mcursor').style.display = 'none';
+    document.getElementById('next-wrap').style.display = 'block';
+  });
+}
+
+function spawnPtcl(em) {
+  const a = document.querySelector('.g-char');
+  const p = document.createElement('div'); p.className = 'ptcl'; p.textContent = em;
+  p.style.left = (20 + Math.random() * 60) + '%';
+  p.style.top  = (10 + Math.random() * 40) + '%';
+  a.appendChild(p); p.addEventListener('animationend', () => p.remove());
+}
+
+document.getElementById('btn-next').addEventListener('click', () => {
+  sndOk(); round++;
+  document.getElementById('next-wrap').style.display = 'none';
+  if (round < gameRounds.length) startRound(); else goEnd();
+});
+
+/* ══════════════════════════════════════════════════════ ENDING */
+function goEnd() {
+  stopAnim();
+
+  // ── エンディング画面の内容をトランジション前に準備 ──
+  const cv = document.getElementById('end-cv');
+  drawSpr(cv, sel, 140);   // 先に描いておく
+
+  document.getElementById('end-ttl').textContent = '🌱 タネカードをゲット！ 🌱';
+  setHearts(document.getElementById('end-hearts'), hearts, 6, 16);
+  const scSprite = document.getElementById('sc-sprite');
+  drawSpr(scSprite, sel, 96);
+  document.getElementById('sc-name').textContent = sel.name + ' より';
+  document.getElementById('sc-msg').innerHTML =
+    (hearts >= 4 ? sel.hi : sel.lo).replace(/\n/g, '<br>');
+
+  const sc = document.getElementById('seed-card');
+  sc.style.display = 'flex';
+  sc.classList.remove('card-animate');
+  void sc.offsetWidth;
+  sc.classList.add('card-animate');
+
+  go(4);
+  startAnim(cv, sel);
+  sndFanfare();
+}
+
+/* ══════════════════════════════════════════════════════ DOWNLOAD */
+document.getElementById('btn-dl').addEventListener('click', async () => {
+  if (!sel) return; sndOk();
+  const btn = document.getElementById('btn-dl');
+  btn.disabled = true; btn.textContent = '...';
+  try {
+    await document.fonts.ready;
+    const card = document.getElementById('seed-card');
+    // アニメーション由来の opacity を確実に除去してから撮影
+    card.style.animation = 'none';
+    card.style.opacity   = '1';
+    card.style.transform = 'none';
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const cv = await html2canvas(card, {
+      scale: 3,
+      backgroundColor: '#c8e888',
+      useCORS: true,
+      allowTaint: true,
+      logging: false,
+      ignoreElements: el => el.classList.contains('scanlines'),
+    });
+    card.style.animation = '';
+    card.style.opacity   = '';
+    card.style.transform = '';
+    const a = document.createElement('a');
+    a.download = 'tane-card-' + sel.id + '.png';
+    a.href = cv.toDataURL('image/png');
+    a.click();
+  } catch(e) {
+    console.error(e);
+  } finally {
+    btn.disabled = false; btn.textContent = '📥 カードをダウンロード';
+  }
+});
+
+/* ══════════════════════════════════════════════════════ BACK from END */
+document.getElementById('back-end').addEventListener('click', () => {
+  sndOk(); stopAnim();
+  document.getElementById('seed-card').style.display = 'none';
+  sel = null; round = 0; hearts = 0; gstate = 'choose'; gameRounds = [];
+  go(1, true);
+});
+
+/* ══════════════════════════════════════════════════════ REPLAY */
+document.getElementById('btn-replay').addEventListener('click', () => {
+  sndOk(); sel = null; round = 0; hearts = 0; gstate = 'choose'; gameRounds = [];
+  document.getElementById('seed-card').style.display = 'none';
+  stopAnim();
+  document.querySelectorAll('.slide').forEach((s, i) => {
+    s.classList.remove('active', 'past');
+    if (i === 0) s.classList.add('active');
+  });
+  si = 0;
+  document.querySelectorAll('.dot').forEach(d => d.classList.toggle('on', d.dataset.i === '0'));
+});
+
+/* ══════════════════════════════════════════════════════ INIT */
+buildSelect();
+// iOS Safari でのビューポート高さを動的に補正
+(function fixVh() {
+  function set() { document.documentElement.style.setProperty('--dvh', window.innerHeight * .01 + 'px'); }
+  set(); window.addEventListener('resize', set);
+})();
+</script>
+</body>
+</html>
